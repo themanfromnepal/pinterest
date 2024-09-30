@@ -43,6 +43,7 @@ const Header = () => {
         width={50}
         height={50}
         className="hover:bg-gray-300 p-2 rounded-full cursor-pointer"
+        priority
       />
       <HeaderButton label="Home" onClick={() => {}} active={true} />
       <HeaderButton

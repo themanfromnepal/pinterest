@@ -1,7 +1,14 @@
-import { firebaseDb as db } from "./config";
+import { firebaseDb as db, firebaseStorage } from "./config";
 import { useState, useEffect, useCallback } from "react";
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { PinFormType } from "@/validationScheme/scheme";
+import { randomUUID } from "crypto";
+
+type PostUploadType = Omit<PinFormType, "file"> & {
+  id: string;
+  image: string;
+};
 
 const useFireStore = (collectionPath: string) => {
   const [loading, setLoading] = useState(false);
@@ -81,27 +88,52 @@ const useFireStore = (collectionPath: string) => {
     [collectionPath]
   );
 
-  const storage = getStorage();
-
-  // Upload file function as a callback
-  const uploadFile = useCallback(
-    async (file: File, documentId: string) => {
+  // Upload file function
+  const uploadPost = useCallback(
+    async (documentId: string, form: PinFormType) => {
+      setError(null);
+      setLoading(true);
       try {
-        // Define the path for the file in storage
-        const storagePath = `uploads/${documentId}/${file.name}`;
-        const storageRef = ref(storage, storagePath); // Create a storage reference
-        await uploadBytes(storageRef, file); // Upload the file
+        // Ensure the file is provided
+        if (!form.file) {
+          setError("No file provided for upload");
+          return; // Early exit if no file
+        }
 
+        // Define the path for the file in storage
+        const storagePath = `uploads/${documentId}/${form.file.name}`;
+        const storageRef = ref(firebaseStorage, storagePath); // Create a storage reference
+
+        // Upload the file to storage
+        await uploadBytes(storageRef, form.file); // Upload the file
+
+        // Get the download URL for the uploaded file
         const downloadURL = await getDownloadURL(storageRef); // Get download URL
 
-        // Update Firestore document with the file URL
+        // Prepare the Firestore document reference
         const docRef = doc(db, collectionPath, documentId);
-        await updateDoc(docRef, { userImage: downloadURL }); // Store the download URL in the document
 
-        return downloadURL; // Return the file URL
+        const { file, ...restForm } = form;
+
+        // Prepare the post data
+        const postData: PostUploadType = {
+          ...restForm, // Spread the existing form data
+          image: downloadURL, // Add the download URL for the image
+          id: crypto.randomUUID(), // Generate a unique ID for the post
+        };
+
+        console.log(postData);
+        console.log(collectionPath);
+        console.log(documentId);
+
+        // Store the download URL and post data in Firestore
+        await setDoc(docRef, postData); // Store the document
       } catch (error) {
-        console.error("File upload failed", error);
-        throw new Error("Failed to upload file");
+        setError(
+          error instanceof Error ? error.message : "Failed to upload file"
+        );
+      } finally {
+        setLoading(false);
       }
     },
     [collectionPath]
@@ -112,7 +144,7 @@ const useFireStore = (collectionPath: string) => {
     writeDocument,
     editDocument,
     deleteDocument,
-    uploadFile,
+    uploadPost,
     loading,
     error,
   };
