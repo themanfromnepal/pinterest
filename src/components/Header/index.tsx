@@ -14,14 +14,21 @@ interface HeaderButtonProps {
   label: string;
   onClick: () => void;
   active: boolean;
+  className?: string;
 }
 
-const HeaderButton = ({ label, onClick, active }: HeaderButtonProps) => {
+const HeaderButton = ({
+  label,
+  onClick,
+  active,
+  className,
+}: HeaderButtonProps) => {
   return (
     <button
       className={clsx(
         "py-2 px-4 rounded-full",
-        active ? "bg-black text-white" : "font-bold"
+        active ? "bg-black text-white" : "font-bold",
+        className && className
       )}
       onClick={onClick}
     >
@@ -33,7 +40,22 @@ const HeaderButton = ({ label, onClick, active }: HeaderButtonProps) => {
 const Header = () => {
   const { user, loading, error, signInWithGoogle, logOut } = useFirebaseAuth();
 
+  const { writeDocument } = useFireStore(
+    process.env.NEXT_PUBLIC_FIRESTORE_USER_COLLECTION_NAME!
+  );
+
   const router = useRouter();
+
+  useEffect(() => {
+    if (user && user.email) {
+      const userData = {
+        email: user?.email || "",
+        userName: user?.displayName || "",
+        userImage: user?.photoURL || "",
+      };
+      writeDocument(user?.email, userData);
+    }
+  }, [user]);
 
   return (
     <div className="flex gap-3 md:gap-2 items-center p-6">
@@ -44,12 +66,22 @@ const Header = () => {
         height={50}
         className="hover:bg-gray-300 p-2 rounded-full cursor-pointer"
         priority
+        onClick={() => {
+          router.push("/");
+        }}
       />
-      <HeaderButton label="Home" onClick={() => {}} active={true} />
+      <HeaderButton
+        label="Home"
+        onClick={() => {
+          router.push("/");
+        }}
+        active={true}
+        className="hidden lg:inline-block"
+      />
       <HeaderButton
         label="Create"
         onClick={() => {
-          router.push("/pin-builder");
+          user ? router.push("/pin-builder") : signInWithGoogle();
         }}
         active={false}
       />

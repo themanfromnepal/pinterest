@@ -8,6 +8,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import clsx from "clsx";
 import useFireStore from "@/firebase/useFirestore";
+import { useRouter } from "next/navigation";
 
 type PinBuilderFormProps = {
   user: User;
@@ -18,9 +19,12 @@ const PinBuilderForm = ({ user }: PinBuilderFormProps) => {
     process.env.NEXT_PUBLIC_FIRESTORE_POST_STORAGE_COLLECTION_NAME!
   );
 
+  const router = useRouter();
+
   const onSubmit = (data: PinFormType) => {
     if (user) {
       uploadPost(user?.email!, data);
+      router.push("/");
     }
   };
 
@@ -48,14 +52,23 @@ const PinBuilderForm = ({ user }: PinBuilderFormProps) => {
       >
         <div className="flex items-center mb-6">
           {error && error}
-          <button
-            onClick={() => {}}
-            className="bg-red-500 p-2 px-3 text-white font-semibold rounded-lg ml-auto"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Save"}
-          </button>
+          {loading ? (
+            <button
+              disabled={true}
+              type="button"
+              className="bg-red-500 p-2 px-3 text-white font-semibold rounded-lg ml-auto flex items-center disabled:cursor-not-allowed"
+            >
+              <div className="animate-spin rounded-full h-5 w-5 border-b-4 border-dotted border-white mr-2"></div>{" "}
+              Loading
+            </button>
+          ) : (
+            <button
+              className="bg-red-500 p-2 px-3 text-white font-semibold rounded-lg ml-auto"
+              type="submit"
+            >
+              Save
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

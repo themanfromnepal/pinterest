@@ -36,6 +36,19 @@ function abbreviateString(value: string, maxLength: number) {
   return value.length > maxLength ? value.slice(0, maxLength) + "..." : value;
 }
 
+function extractDomain(url: string): string {
+  try {
+    // Create a new URL object to easily extract the hostname
+    const domain = new URL(url).hostname;
+
+    // If the hostname contains 'www.', remove it for a cleaner domain
+    return domain.startsWith("www.") ? domain.slice(4) : domain;
+  } catch (error) {
+    console.error("Invalid URL:", error);
+    return ""; // Return empty string for invalid URLs
+  }
+}
+
 export {
   formatEmailFromParam,
   capitalizeFirstLetter,
@@ -44,4 +57,5 @@ export {
   camelToTitle,
   removeSpecialCharacters,
   abbreviateString,
+  extractDomain,
 };

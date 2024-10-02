@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import useFireStore from "@/firebase/useFirestore";
-import { formatEmailFromParam } from "@/utils/string";
+import { formatEmailFromParam } from "@/utils/StringFormatter";
 import { useEffect } from "react";
 import UserInfo from "./_component/UserInfo";
 import { DocumentData } from "firebase/firestore";

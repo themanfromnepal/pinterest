@@ -1,14 +1,20 @@
 import { firebaseDb as db, firebaseStorage } from "./config";
-import { useState, useEffect, useCallback } from "react";
-import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useState, useCallback } from "react";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  WhereFilterOp,
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { PinFormType } from "@/validationScheme/scheme";
-import { randomUUID } from "crypto";
-
-type PostUploadType = Omit<PinFormType, "file"> & {
-  id: string;
-  image: string;
-};
+import { PostUploadType } from "@/types/types";
 
 const useFireStore = (collectionPath: string) => {
   const [loading, setLoading] = useState(false);
@@ -100,38 +106,61 @@ const useFireStore = (collectionPath: string) => {
           return; // Early exit if no file
         }
 
-        // Define the path for the file in storage
         const storagePath = `uploads/${documentId}/${form.file.name}`;
         const storageRef = ref(firebaseStorage, storagePath); // Create a storage reference
 
-        // Upload the file to storage
         await uploadBytes(storageRef, form.file); // Upload the file
 
-        // Get the download URL for the uploaded file
         const downloadURL = await getDownloadURL(storageRef); // Get download URL
 
+        const postId =
+          form.title + "_" + documentId + "_" + Date.now().toString();
+
         // Prepare the Firestore document reference
-        const docRef = doc(db, collectionPath, documentId);
+        const docRef = doc(db, collectionPath, postId);
 
         const { file, ...restForm } = form;
 
         // Prepare the post data
         const postData: PostUploadType = {
-          ...restForm, // Spread the existing form data
-          image: downloadURL, // Add the download URL for the image
-          id: crypto.randomUUID(), // Generate a unique ID for the post
+          ...restForm,
+          image: downloadURL,
+          id: crypto.randomUUID(),
+          uploadedDate: Date.now().toString(),
+          userId: documentId,
         };
 
-        console.log(postData);
-        console.log(collectionPath);
-        console.log(documentId);
-
-        // Store the download URL and post data in Firestore
-        await setDoc(docRef, postData); // Store the document
+        await setDoc(docRef, postData);
       } catch (error) {
         setError(
           error instanceof Error ? error.message : "Failed to upload file"
         );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [collectionPath]
+  );
+
+  // Query Documents
+  const queryDocuments = useCallback(
+    async (field: string, operator: WhereFilterOp, value: any) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const q = query(
+          collection(db, collectionPath),
+          where(field, operator, value)
+        );
+        const querySnapshot = await getDocs(q);
+        const documents = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        return documents;
+      } catch (error: any) {
+        setError(error.message);
+        return [];
       } finally {
         setLoading(false);
       }
@@ -145,6 +174,7 @@ const useFireStore = (collectionPath: string) => {
     editDocument,
     deleteDocument,
     uploadPost,
+    queryDocuments,
     loading,
     error,
   };
